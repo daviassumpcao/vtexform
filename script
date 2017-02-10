@@ -1,0 +1,175 @@
+<html>
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.4/jquery.min.js"></script>
+    <script type="text/javascript">
+        $(document).ready(function(){
+            var storeName = "franciscajoias"; //Indica o nome da conta utilizada na API do MasterData
+            var dataEntity = "CL"; //Indica a sigla da entidade de dados utilizada na API do MasterData
+            var htmlElementId = "infoAdic"; //Indica o ID do elemento HTML que receberá o formulário
+            var messageLoading = "Carregando..."; //Mensagem de carregamento do formulário (ao salvar)
+            var messageValidation = "Preencha corretamente todos os campos obrigatórios do formulário."; //Mensagem de validação de formulário
+            var messageSuccess = "Informações atualizadas foram com sucesso. Obrigado."; //Mensagem de sucesso
+            var messageError = "Algum erro aconteceu. Tente novamente mais tarde."; //Mensagem de erro
+
+            FormCreate(storeName, dataEntity, htmlElementId, messageLoading, messageValidation, messageSuccess, messageError);
+        });
+        function ContactCreate(storeName, dataEntity, cl_client)
+        {
+            var jsonCO = 	{
+                "client": cl_client.replace("CL-",""),
+                "email": $("#cl_email").val()
+            };
+            var urlCO = "https://api.vtexcrm.com.br/" + storeName + "/dataentities/" + dataEntity + "/documents/";
+            $.ajax({
+                headers: {
+                    "Accept": "application/vnd.vtex.ds.v10+json",
+                    "Content-Type": "application/json"
+                },
+                data: JSON.stringify(jsonCO),
+                type: 'PATCH',
+                url: urlCO,
+                success: function (data) {
+                    console.log(data);
+                    ResetMessages()
+                    $("#co_message_success").show();
+                    $("#cl_homePhone").val("");
+                    $("#cl_businessPhone").val("");
+                    $("#cl_email").val("");
+                },
+                error: function (data) {
+                    console.log(data);
+                    ResetMessages()
+                    $("#co_message_error").show();
+                }
+            });
+        }
+        function ContactCreateByEmail(storeName, dataEntity, cl_email)
+        {
+            var cl_url = "https://api.vtexcrm.com.br/" + storeName + "/dataentities/CL/search/?email=" + cl_email + "&_fields=id";
+            $.ajax({
+                headers: {
+                    "Accept": "application/vnd.vtex.ds.v10+json",
+                    "Content-Type": "application/json"
+                },
+                type: 'GET',
+                url: cl_url,
+                success: function(data, textStatus, xhr){
+                    console.log(data);
+                    if(xhr.status == "200" || xhr.status == "201"){
+                        ContactCreate(storeName, dataEntity, data[0].id);
+                    }else{
+                        ResetMessages()
+                        $("#co_message_error").show();
+                    }
+                },
+                error: function(data){
+                    console.log(data);
+                    ResetMessages()
+                    $("#co_message_error").show();
+                }
+            });
+        }
+        function ClientCreate()
+        {
+            var storeName			= $("#master_data_store_name").val();
+            var dataEntity			= $("#master_data_data_entity").val();
+            var cl_homePhone 		= $("#cl_homePhone").val();
+            var cl_businessPhone 	= $("#cl_businessPhone").val();
+            var cl_mobilePhone 	        = $("#cl_mobilePhone").val();
+            var cl_email 	        = $("#cl_email").val();
+            var cl_json = 	{
+                "homePhone": cl_homePhone,
+                "businessPhone": cl_businessPhone,
+                "email": cl_email,
+                "mobilePhone": cl_mobilePhone
+            };
+            var cl_url = "https://api.vtexcrm.com.br/" + storeName + "/dataentities/CL/documents/";
+            $.ajax({
+                headers: {
+                    "Accept": "application/vnd.vtex.ds.v10+json",
+                    "Content-Type": "application/json"
+                },
+                data: JSON.stringify(cl_json),
+                type: 'PATCH',
+                url: cl_url,
+                success: function(data, textStatus, xhr){
+                    console.log(data);
+                    if(xhr.status == "200" || xhr.status == "201"){
+                        ContactCreate(storeName, dataEntity, data.Id);
+                    }else if(xhr.status == "304"){
+                        ContactCreateByEmail(storeName, dataEntity, cl_email);
+                    }else{
+                        ResetMessages()
+                        $("#co_message_error").show();
+                    }
+                },
+                error: function(data){
+                    console.log(data);
+                    ResetMessages()
+                    $("#co_message_error").show();
+                }
+            });
+        }
+        function ResetMessages()
+        {
+            $("#co_message_loading").hide();
+            $("#co_message_validate").hide();
+            $("#co_message_success").hide();
+            $("#co_message_error").hide();
+        }
+        function FormValidate()
+        {
+            var isFormValidate = true;
+            if((isFormValidate) && ($("#cl_homePhone").val() == "")){
+                isFormValidate = false;
+                $("#cl_homePhone").focus();
+            }
+            if((isFormValidate) && ($("#cl_businessPhone").val() == "")){
+                isFormValidate = false;
+                $("#cl_businessPhone").focus();
+            }
+            if(isFormValidate){
+                ResetMessages()
+                $("#co_message_loading").show();
+                ClientCreate();
+            }else{
+                ResetMessages()
+                $("#co_message_validate").show();
+            }
+            return false;
+        }
+        function FormCreate(storeName, dataEntity, htmlElementId, messageLoading, messageValidation, messageSuccess, messageError){
+            var htmlContent = '';
+            htmlContent += '<div id="co_message_loading" class="alert alert-info" style="display:none;">' + messageLoading + '</div>';
+            htmlContent += '<div id="co_message_validate" class="alert alert-warning" style="display:none;">' + messageValidation + '</div>';
+            htmlContent += '<div id="co_message_success" class="alert alert-success" style="display:none;">' + messageSuccess + '</div>';
+            htmlContent += '<div id="co_message_error" class="alert alert-danger" style="display:none;">' + messageError + '</div>';
+            htmlContent += '<form id="cl_form" action="javascript:FormValidate();" method="post">';
+            htmlContent += '<input type="hidden" id="master_data_store_name" name="master_data_store_name" value="' + storeName + '" />';
+            htmlContent += '<input type="hidden" id="master_data_data_entity" name="master_data_data_entity" value="' + dataEntity + '" />';
+            htmlContent += '<div class="form-field string required cl_homePhone">';
+            htmlContent += 		'<label for="cl_homePhone">Telefone Residencial *</label>';
+            htmlContent += 		'<input id="cl_homePhone" maxlength="100" name="cl_homePhone" type="text" />';
+            htmlContent += '</div>';
+            htmlContent += '<div class="form-field string required cl_businessPhone">';
+            htmlContent += 		'<label for="cl_businessPhone">Telefone Comercial</label>';
+            htmlContent += 		'<input id="cl_businessPhone" maxlength="100" name="cl_businessPhone" type="text" />';
+            htmlContent += '</div>';
+            htmlContent += '<div class="form-field string required cl_mobilePhone">';
+            htmlContent += 		'<label for="cl_mobilePhone">Celular *</label>';
+            htmlContent += 		'<input id="cl_mobilePhone" maxlength="100" name="cl_mobilePhone" type="text" required="required" />';
+            htmlContent += '</div>';
+            htmlContent += '<div class="form-field string required cl_email">';
+            htmlContent += 		'<label for="cl_email">E-mail</label>';
+            htmlContent += 		'<input id="cl_email" maxlength="100" name="cl_email" type="email"  required="required"/>';
+            htmlContent += '</div>';
+            htmlContent += '<div class="form-field submit"><input id="commit" name="commit" type="submit" value="Enviar"></div>';
+            htmlContent += '</form>';
+            $("#"+htmlElementId).html(htmlContent);
+        }
+    </script>
+</head>
+<body>
+<div id="infoAdic"></div>
+</body>
+</html>
